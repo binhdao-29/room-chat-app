@@ -12,8 +12,6 @@ export default function AuthProvider({ children }) {
 
   useEffect(() => {
     const unSubscribed = auth.onAuthStateChanged((user) => {
-      console.log(user);
-  
       if (user) {
         console.log("Done")
         const { displayName, email, uid, photoURL } = user;
@@ -25,6 +23,8 @@ export default function AuthProvider({ children }) {
         history.push('/');
         return;
       }
+
+      setLoading(false);
       history.push('/login');
     })
     return () => {
