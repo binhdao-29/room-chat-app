@@ -1,8 +1,11 @@
 import { UserAddOutlined } from '@ant-design/icons';
-import { Avatar, Button, Tooltip, Form, Input } from 'antd';
-import React, { useContext } from 'react';
+import { Avatar, Button, Tooltip, Form, Input, Alert } from 'antd';
+import React, { useContext, useState } from 'react';
 import styled from 'styled-components';
 import { AppContext } from '../../Context/AppProvider';
+import { AuthContext } from '../../Context/AuthProvider';
+import { addDocument } from '../../firebase/services';
+import useFirestore from '../../hooks/useFirestore';
 
 import Message from './Message';
 
@@ -69,72 +72,109 @@ const FormStyled = styled(Form)`
 
 
 export default function ChatWindow() {
-  const { members, selectedRoom } = useContext(AppContext);
+  const { 
+      members,
+      selectedRoom, 
+      setIsInviteMemberVisible
+    } = useContext(AppContext);
+
+  const { user: { uid, displayName, photoURL}} = useContext(AuthContext);
+  const [inputValue, setInputValue] = useState('');
+  const [form] = Form.useForm();
+
+  const handleInputChange = (e) => {
+    setInputValue(e.target.value);
+  }
+
+  const handleOnSubmit = () => {
+    addDocument('messages', {
+      text: inputValue,
+      uid,
+      photoURL,
+      displayName,
+      roomId: selectedRoom.id
+    })
+
+    form.resetFields(['message']);
+  }
+
+  const conditionMessage = React.useMemo(() => {
+    return {
+      fieldName: 'roomId',
+      operator: '==',
+      compareValue: selectedRoom.id,
+    };
+  }, [selectedRoom]);
+
+  const messages = useFirestore('messages', conditionMessage);
 
   return (
     <WrapperStyled>
-      <HeaderStyled>
-        <div className="header__info">
-          <p className="header__title">{selectedRoom?.name}</p>
-          <span className="header__description">{selectedRoom?.description}</span>
-        </div>
-        <ButtonGroupStyled>
-          <Button type="text" icon={<UserAddOutlined />}>Invite</Button>
-          <Avatar.Group size="small" maxCount={2}>
-            {
-              members.map(member => (
-                <Tooltip title={member.displayName} key={member.uid}>
-                  <Avatar 
-                    src={member.photoURL}
-                  >
-                    {
-                      member.photoURL ? '' : member.displayName?.charAt(0)?.toUpperCase()
-                    }
-                  </Avatar>
-                </Tooltip>
-              ))
-            }
-          </Avatar.Group>
-        </ButtonGroupStyled>
-      </HeaderStyled>
-      <ContentStyled>
-        <MessageListStyled>
-          <Message 
-            text="this is a message"
-            photoURL={null}
-            displayName="Chan"
-            createdAt={1111111111111111}
+      {
+        selectedRoom.id ? (
+          <>
+            <HeaderStyled>
+              <div className="header__info">
+                <p className="header__title">{selectedRoom?.name}</p>
+                <span className="header__description">{selectedRoom?.description}</span>
+              </div>
+              <ButtonGroupStyled>
+                <Button onClick={() => setIsInviteMemberVisible(true)} type="text" icon={<UserAddOutlined />}>Invite</Button>
+                <Avatar.Group size="small" maxCount={2}>
+                  {
+                    members.map(member => (
+                      <Tooltip title={member.displayName} key={member.uid}>
+                        <Avatar 
+                          src={member.photoURL}
+                        >
+                          {
+                            member.photoURL ? '' : member.displayName?.charAt(0)?.toUpperCase()
+                          }
+                        </Avatar>
+                      </Tooltip>
+                    ))
+                  }
+                </Avatar.Group>
+              </ButtonGroupStyled>
+            </HeaderStyled>
+            <ContentStyled>
+              <MessageListStyled>
+                {
+                  messages.map(message => (
+                    <Message 
+                      key={message.id}
+                      text={message.text}
+                      photoURL={message.photoURL}
+                      displayName={message.displayName}
+                      createAt={message.createAt}
+                    />
+                  ))
+                }
+              </MessageListStyled>
+              <FormStyled form={form}>
+                <Form.Item name="message">
+                  <Input 
+                    placeholder="Your message..." 
+                    bordered={false} 
+                    autoComplete="off" 
+                    onChange={handleInputChange}
+                    onPressEnter={handleOnSubmit}
+                  />
+                </Form.Item>
+                <Button type="primary" onClick={handleOnSubmit}>Send</Button>
+              </FormStyled>
+            </ContentStyled>
+          </>
+        ) : (
+          <Alert
+            message='Let choose the room'
+            type='info'
+            showIcon
+            style={{ margin: 5 }}
+            closable
           />
-          <Message 
-            text="this is a message"
-            photoURL={null}
-            displayName="Chan"
-            createdAt={1111111111111111}
-          />
-          <Message 
-            text="this is a message"
-            photoURL={null}
-            displayName="Chan"
-            createdAt={1111111111111111}
-          />
-          <Message 
-            text="this is a message"
-            photoURL={null}
-            displayName="Chan"
-            createdAt={1111111111111111}
-          />
-        </MessageListStyled>
-
-        <FormStyled>
-          <Form.Item>
-            <Input 
-              placeholder="Your message..." 
-              bordered={false} 
-              autoComplete="off" />
-          </Form.Item>
-          <Button type="primary">Send</Button>
-        </FormStyled>
-      </ContentStyled>
+        )
+      }
     </WrapperStyled>
   )
 }
