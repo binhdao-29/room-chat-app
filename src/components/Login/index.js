@@ -1,7 +1,7 @@
 import React from 'react'
 import { Row, Col, Button, Typography } from 'antd';
 import firebase, { auth } from '../../firebase/config';
-import { addUserInfo } from '../../firebase/services';
+import { addDocument } from '../../firebase/services';
 
 const { Title } = Typography;
 
@@ -13,7 +13,7 @@ export default function Login() {
     const { additionalUserInfo, user } = await auth.signInWithPopup(fbProvider);
     
     if (additionalUserInfo.isNewUser) {
-      addUserInfo('users', {
+      addDocument('users', {
         displayName: user.displayName,
         email: user.email,
         photoURL: user.photoURL,
